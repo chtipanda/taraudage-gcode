@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chtipanda CNC v0.6.0 - ISO / UN / BSP</title>
+    <style>
+        :root {
+            --bg-color: #121826;
+            --panel-bg: #1b2234;
+            --border-color: #2e384d;
+            --accent-color: #ff9800;
+            --accent-hover: #e68a00;
+            --success-color: #4caf50;
+            --error-color: #f44336;
+            --text-main: #e0e6ed;
+            --text-muted: #94a3b8;
+            --input-bg: #0f172a;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; }
+        header { background-color: var(--panel-bg); border-bottom: 1px solid var(--border-color); padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.2rem; font-weight: bold; color: var(--accent-color); display: flex; align-items: center; gap: 10px; }
+        .badge { background: #2d3748; color: #a0aec0; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; }
+        .app-container { display: grid; grid-template-columns: 440px 1fr; gap: 16px; padding: 16px; flex: 1; }
+        .panel { background-color: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+        .panel-title { font-size: 0.92rem; font-weight: 600; color: var(--accent-color); border-bottom: 1px solid var(--border-color); padding-bottom: 4px; margin-top: 4px; }
+        .form-group { display: flex; flex-direction: column; gap: 3px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        label { font-size: 0.8rem; color: var(--text-muted); }
+        input, select { background-color: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 6px 10px; border-radius: 4px; font-size: 0.85rem; outline: none; }
+        input:focus, select:focus { border-color: var(--accent-color); }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; }
+        .btn { background-color: var(--accent-color); color: #000; font-weight: bold; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; transition: background 0.2s; display: flex; justify-content: center; align-items: center; gap: 6px; font-size: 0.85rem; }
+        .btn:hover { background-color: var(--accent-hover); }
+        .btn-secondary { background-color: #334155; color: var(--text-main); }
+        .btn-secondary:hover { background-color: #475569; }
+        .status-box { padding: 8px 10px; border-radius: 4px; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; line-height: 1.3; }
+        .status-valid { background-color: rgba(76, 175, 80, 0.15); border: 1px solid var(--success-color); color: #81c784; }
+        .status-error { background-color: rgba(244, 67, 54, 0.15); border: 1px solid var(--error-color); color: #e57373; }
+        .visualization-area { display: grid; grid-template-rows: 240px 1fr; gap: 16px; }
+        .canvas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; height: 100%; }
+        .canvas-card { background-color: #0d1117; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: space-between; position: relative; }
+        .canvas-title { position: absolute; top: 8px; left: 12px; font-size: 0.75rem; font-weight: bold; color: var(--text-muted); background: rgba(15,23,42,0.8); padding: 2px 6px; border-radius: 3px; }
+        .gcode-container { background-color: #0d1117; border: 1px solid var(--border-color); border-radius: 8px; display: flex; flex-direction: column; overflow: hidden; }
+        .gcode-tabs { display: flex; background-color: var(--panel-bg); border-bottom: 1px solid var(--border-color); }
+        .tab-btn { background: none; border: none; color: var(--text-muted); padding: 10px 16px; font-size: 0.85rem; font-weight: bold; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-btn.active { color: var(--accent-color); border-bottom-color: var(--accent-color); background-color: rgba(255,152,0,0.05); }
+        .gcode-header { background-color: rgba(15, 23, 42, 0.6); padding: 8px 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        textarea { background-color: transparent; border: none; color: #38ef7d; font-family: 'Consolas', 'Courier New', monospace; padding: 12px; flex: 1; resize: none; outline: none; font-size: 0.82rem; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <span>🐾 Chtipanda CNC</span>
+            <span class="badge">v0.6.0 (ISO · UN · Gaz · Int/Ext · G28/G30)</span>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <div class="panel" id="panel"></div>
+        <div class="visualization-area">
+            <div class="canvas-grid">
+                <div class="canvas-card">
+                    <div class="canvas-title">Vue de dessus (XY)</div>
+                    <canvas id="canvasXY" width="280" height="210"></canvas>
+                </div>
+                <div class="canvas-card">
+                    <div class="canvas-title">Vue de côté (XZ)</div>
+                    <canvas id="canvasXZ" width="280" height="210"></canvas>
+                </div>
+            </div>
+
+            <div class="gcode-container">
+                <div class="gcode-tabs" id="tab-bar">
+                    <button class="tab-btn active" id="tab-btn-single" onclick="switchTab('single')">📄 Fichier Unique</button>
+                    <button class="tab-btn" id="tab-btn-bore" onclick="switchTab('bore')">🔵 OP1 : Alésage (.nc)</button>
+                    <button class="tab-btn" id="tab-btn-thread" onclick="switchTab('thread')">🟢 OP2 : Filetage (.nc)</button>
+                    <button class="tab-btn" id="tab-btn-cal" style="display:none" onclick="switchTab('cal')">🎯 Calibration palpeur</button>
+                </div>
+                <div class="gcode-header">
+                    <span id="gcode-filename" style="font-size: 0.82rem; font-weight: bold; color: var(--text-muted)"></span>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="copyGCode()">Copier</button>
+                        <button class="btn" id="btn-download" style="padding: 4px 10px; font-size: 0.78rem;" onclick="downloadActiveGCode()">Télécharger ce fichier .NC</button>
+                    </div>
+                </div>
+                <textarea id="gcode-output" readonly placeholder="G-code généré..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <script>
+const $=i=>document.getElementById(i),v=i=>parseFloat($(i).value)||0,c=i=>$(i).checked,f3=x=>x.toFixed(3);
+let isValid=false,gC='',gS='',gB='',gT='',activeTab='single';
+const STD=[['ISO M',[['M2',2,.4],['M2.5',2.5,.45],['M3',3,.5],['M4',4,.7],['M5',5,.8],['M6',6,1],['M8',8,1.25],['M8x1',8,1],['M10',10,1.5],['M10x1.25',10,1.25],['M12',12,1.75]]],
+['Impérial UNC/UNF',[['#4-40 UNC',2.845,25.4/40],['#6-32 UNC',3.505,25.4/32],['#8-32 UNC',4.166,25.4/32],['#10-24 UNC',4.826,25.4/24],['#10-32 UNF',4.826,25.4/32],['1/4-20 UNC',6.35,25.4/20],['1/4-28 UNF',6.35,25.4/28],['5/16-18 UNC',7.938,25.4/18],['3/8-16 UNC',9.525,25.4/16],['1/2-13 UNC',12.7,25.4/13]]],
+['Gaz BSP (G) 55°',[['G1/8',9.728,25.4/28],['G1/4',13.157,25.4/19],['G3/8',16.662,25.4/19],['G1/2',20.955,25.4/14],['G3/4',26.441,25.4/14],['G1',33.249,25.4/11]]]];
+const POST={linuxcnc:{vars:1,m6:1,end:'M2',pr:'G38.2'},mach3:{m6:1,end:'M30',pr:'G31'},fluidnc:{m6:1,end:'M30',pr:'G38.2'},grbl:{m6:0,end:'M30',pr:'G38.2'}};
+const SPEC=[['1. Machine & Format'],
+[{id:'post',l:'Machine',t:'sel',o:[['linuxcnc','LinuxCNC (M6)'],['mach3','Mach3/4 (M6)'],['fluidnc','FluidNC (M6)'],['grbl','GRBL/grblHAL (pause M0)']]},{id:'mode',l:'Fichiers',t:'sel',o:[['single','Fichier unique'],['split','2 fichiers séparés']]}],
+['!','⚠️ Le fichier remonte toujours au « Z haut » (position MACHINE, machine référencée) avant chaque déplacement : règle-le dans la section 5.'],
+['2. Filetage / Taraudage'],
+[{id:'op',l:'Opération',t:'sel',o:[['int','Taraudage (intérieur)'],['ext','Filetage (extérieur)']]},{id:'dir',l:'Sens d\'usinage',t:'sel',o:[['up','Par le bas (montée)'],['down','Par le haut (descente)']]}],
+[{id:'preset',l:'Norme',t:'sel',o:[]},{id:'lh',l:'Pas à gauche',t:'chk'}],
+[{id:'diameter',l:'Ø nominal (mm)',v:4,s:.001},{id:'pitch',l:'Pas (mm)',v:.7,s:.001}],
+[{id:'pct',l:'Taux de filet (%)',v:75,s:5},{id:'bore',l:'Ø alésage (mm)',v:3.32,s:.05}],
+[{id:'depth',l:'Prof. filet (mm)',v:8,s:.5},{id:'over',l:'Surcourse alésage (mm)',v:.5,s:.1}],
+[{id:'adj',l:'Jeu du filet (mm) : + plus lâche, − plus serré',v:0,s:.01}],
+['3. Outil 1 : Alésoir'],
+[{id:'eb',l:'Activer l\'alésage',t:'chk',d:1}],
+[{id:'bd',l:'Ø alésoir',v:3.175,s:.001},{id:'bl',l:'Hauteur coupe',v:12,s:.5}],
+[{id:'bf',l:'Avance F',v:150,s:10},{id:'bs',l:'Broche S',v:9000,s:500}],
+[{id:'bstep',l:'Descente / tour (mm)',v:.5,s:.1}],
+['4. Outil 2 : Fraise à fileter'],
+[{id:'td',l:'Ø fraise',v:3.15,s:.001},{id:'th',l:'Hauteur dent H',v:.808,s:.001}],
+[{id:'tn',l:'Longueur cou',v:35,s:.5},{id:'passes',l:'Passes',v:2,s:1}],
+[{id:'tf',l:'Avance F',v:100,s:10},{id:'ts',l:'Broche S',v:7000,s:500}],
+[{id:'cc',l:'Compensation avance circulaire ⓘ',t:'chk',d:1}],
+['5. Options changement d\'outil & palpeur (tous post-processeurs)'],
+['!','⚠️ Toutes les positions de cette section (Z haut, Z contact palpeur, positions mémorisées par G28.1 / G30.1) sont des positions MACHINE, jamais des positions pièce : le zéro pièce change à chaque montage, pas la machine. Relève-les dans l\'affichage « Machine » de ton contrôleur, machine référencée (homing).'],
+[{id:'g28',l:'Changement d\'outil via G28 (position mémorisée par G28.1)',t:'chk'}],
+[{id:'pe',l:'Palpeur fixe via G30 (position mémorisée par G30.1) + mesure auto de la longueur d\'outil',t:'chk'}],
+[{id:'zh',l:'Z haut machine (point le plus haut)',v:0,s:1},{id:'pd',l:'Course de recherche (distance jusqu\'au palpeur, mm)',v:60,s:5}],
+[{id:'pf',l:'Avance palpage',v:30,s:5},{id:'ph',l:'Hauteur palpeur / Z0 (mm)',v:50,s:.1}]];
+const grp=()=>{const p=$('preset').value;return p?+p.split('-')[0]:0};
+const lab=()=>$('preset').value?$('preset').selectedOptions[0].text:`D${v('diameter')}x${v('pitch')}`;
+const fname=s=>`Chtipanda_${lab().replace(/[^\w.-]+/g,'_')}_${s}.nc`;
+function preset(){const p=$('preset').value;if(p){const[i,j]=p.split('-'),s=STD[i][1][j];$('diameter').value=s[1];$('pitch').value=+s[2].toFixed(4);autoBore();}}
+function autoBore(){$('bore').value=(v('diameter')-(grp()==2?1.2807:1.299)*v('pitch')*v('pct')/100).toFixed(2);}
+
+function boreOp(P){const g=[],R=(P.dB-P.bd)/2,z=P.zb;
+ g.push(TOP(P),`M3 S${P.bs}`,'G0 X0 Y0','G0 Z2.0',`G1 X${f3(R)} Y0 F${(P.bf*.8).toFixed(0)}`);
+ let cz=2;while(cz>-z){cz=Math.max(cz-P.st,-z);g.push(`G3 X${f3(R)} Y0 Z${f3(cz)} I-${f3(R)} J0 F${P.bf}`);}
+ g.push(`G3 X${f3(R)} Y0 I-${f3(R)} J0 F${P.bf}`,`G1 X0 Y0 F${P.bf}`,'G0 Z10','M5');return g;}
+
+function thrOp(P){const g=[],up=P.up,G=(up!=P.lh)?'G3':'G2',dz=up?P.p:-P.p,zs=up?-P.zt:0,rt=P.td/2,Fl=(P.tf*.5).toFixed(0);
+ g.push(TOP(P),`M3 S${P.ts}`,P.ext?`G0 X${f3(P.R0+3)} Y0`:'G0 X0 Y0','G0 Z2.0');
+ for(let k=1;k<=P.np;k++){const R=P.R0+(P.R1-P.R0)*k/P.np,F=(P.tf*(P.cc?R/(P.ext?R-rt:R+rt):1)).toFixed(1);
+  g.push(`( Passe ${k}/${P.np} - rayon trajectoire ${f3(R)} )`,`G0 Z${f3(zs)}`);
+  g.push(P.ext?`G1 X${f3(R)} Y0 F${Fl}`:`${G} X${f3(R)} Y0 I${f3(R/2)} J0 F${Fl}`);
+  for(let i=1;i<=P.n;i++)g.push(`${G} X${f3(R)} Y0 Z${f3(zs+dz*i)} I-${f3(R)} J0 F${F}`);
+  g.push(P.ext?`G1 X${f3(P.R0+3)} Y0 F${Fl}`:`${G} X0 Y0 I-${f3(R/2)} J0 F${Fl}`);}
+ g.push('G0 Z10','M5');return g;}
+
+const TOP=P=>`G53 G0 Z${P.zh}`,ret=P=>[TOP(P),...(P.g28?['G0','G91 G28 Z0','G28 X0 Y0','G90']:[])];
+const PR=(P,o)=>[TOP(P),'G0','G30',`G91 ${o.pr} Z-${f3(P.pd-5)} F${P.pf}`,'G90'],BK=P=>[TOP(P),'G0','G30'];
+function calib(P){const o=POST[P.post];return['(--- Chtipanda CNC - CALIBRATION PALPEUR (SANS OUTIL) ---)','( Retirer tout outil de la broche )','G21 G90 G54',TOP(P),'G0','G30',`G91 ${o.pr} Z-${P.pd} F${P.pf}`,'G90','(MSG, Noter la distance parcourue depuis la position G30 jusqu au contact = course de recherche)',TOP(P),o.end].join('\n');}
+function pk(P,kind,uv){const o=POST[P.post];
+ if(kind=='ref'&&uv)return['( Hauteur outil T1 mesurée après alésage = référence )',...PR(P,o),'#<_zref>=#5063','(PRINT, Reference T1 = #<_zref>)',...BK(P),...ret(P)];
+ if(kind=='delta')return['( Mesure T2 : différence de longueur avec la référence T1 )',...PR(P,o),'#<_delta>=[#5063-#<_zref>]','(PRINT, Difference longueur T2-T1 = #<_delta>)','G10 L20 P1 Z#<_zref>',...BK(P),...ret(P)];
+ return[kind=='ref'?'( Hauteur outil T1 re-mesurée après alésage )':'( Mesure outil au palpeur fixe )',...PR(P,o),`G10 L20 P1 Z${P.ph}`,...BK(P),...ret(P)];}
+function tc(P,n,name,first,change,uv){const o=POST[P.post],g=[`\n(--- T${n} : ${name} ---)`,'M5',...ret(P)];
+ if(change){if(o.m6)g.push(`T${n} M6`);else if(!first)g.push(`(MSG, Changer outil : T${n} ${name})`,'M0');else g.push(`( T${n} ${name} doit être monté )`);
+  if(!P.pe&&P.g28&&!first)g.push('(MSG, Pas de palpeur : refaire le Z0 avec le nouvel outil)','M0');}
+ if(P.pe&&!(uv&&first))g.push(...pk(P,uv?'delta':'abs',uv));
+ return g;}
+
+function file(P,parts){const mv=parts.length>1&&POST[P.post].vars,g=[`(--- Chtipanda CNC v0.6.0 - ${parts.map(x=>x[0]).join(' + ')} ---)`,`( ${lab()} | ${P.ext?'Filetage ext.':'Taraudage int.'} | Fond filet Z-${f3(P.zt)} )`,'( ATTENTION : Z haut, G28, G30 et palpeur = positions MACHINE, pas pièce ; machine référencée )','G21 G90 G17 G40 G91.1 G54'];
+ parts.forEach((x,i)=>{g.push(...tc(P,x[1],x[0],i==0,parts.length>1,mv),...x[2](P));if(P.pe&&x[1]==1)g.push(...pk(P,'ref',mv));});
+ g.push(...ret(P),POST[P.post].end);return g.join('\n');}
+
+function setError(m){isValid=false;$('status-box').className='status-box status-error';$('status-box').innerHTML='❌ '+m;$('btn-download').disabled=true;$('btn-download').style.opacity=.4;$('gcode-output').value=`(--- ERREUR : ${m} ---)`;}
+
+function run(al){
+ const P={post:$('post').value,mode:$('mode').value,ext:$('op').value=='ext',up:$('dir').value=='up',lh:c('lh'),D:v('diameter'),p:v('pitch'),dB:v('bore'),dep:v('depth'),ov:v('over'),bd:v('bd'),bl:v('bl'),bf:v('bf')||150,bs:v('bs'),st:v('bstep')||.5,td:v('td'),th:v('th'),tn:v('tn'),np:Math.max(1,parseInt($('passes').value)||1),tf:v('tf')||100,ts:v('ts'),cc:c('cc'),adj:v('adj'),pe:c('pe'),g28:c('g28'),zh:v('zh'),pd:v('pd'),pf:v('pf')||30,ph:v('ph')};
+ P.eb=c('eb')&&!P.ext;
+ if(!P.p||!P.D||P.dep<=0)return setError('Paramètres incomplets (Ø, pas, profondeur).');
+ P.n=Math.ceil(P.dep/P.p-1e-9);P.zt=P.n*P.p;P.zb=P.zt+P.ov;
+ const k=grp()==2?.6403:.6134;
+ P.R0=P.ext?P.D/2+P.td/2:(P.dB-P.td)/2;P.R1=P.ext?P.D/2-k*P.p+P.td/2:(P.D-P.td)/2;P.R1+=(P.ext?-1:1)*P.adj/2;
+ if(!P.ext){
+  if(P.D<=P.dB)return setError('Ø nominal doit être > Ø alésage.');
+  if(P.eb&&P.bd>=P.dB)return setError(`Collision alésoir : Ø ${P.bd} >= trou ${P.dB}.`);
+  if(P.eb&&P.zb>P.bl)return setError(`Profondeur alésage ${f3(P.zb)} > coupe alésoir ${P.bl}.`);
+  if(P.td>=P.dB)return setError(`Collision fraise : Ø ${P.td} >= alésage ${P.dB}.`);}
+ if(P.zt>P.tn)return setError(`Fond de filet ${f3(P.zt)} > cou de fraise ${P.tn}.`);
+ const rad=Math.abs(P.R1-P.R0);if(rad>P.th)return setError(`Profondeur radiale ${f3(rad)} > hauteur de dent ${P.th}.`);
+ if(P.pe&&P.pd<=5)return setError('Course de recherche du palpeur doit être > 5 mm.');
+ const G=(P.up!=P.lh)?'G3':'G2',climb=P.ext?G=='G2':G=='G3',bore=['ALESOIR',1,boreOp],thr=['FRAISE A FILETER',2,thrOp];
+ gT=file(P,[thr]);gB=P.eb?file(P,[bore]):'(Alésage désactivé ou filetage extérieur)';gC=calib(P);gS=file(P,P.eb?[bore,thr]:[thr]);
+ const fc=R=>(P.tf*(P.cc?R/(P.ext?R-P.td/2:R+P.td/2):1)).toFixed(1);
+ $('cc').parentElement.title=P.cc?`F à l'arête = ${P.tf} mm/min. Avance envoyée au centre : ${fc(P.R0+(P.R1-P.R0)/P.np)} (passe 1) → ${fc(P.R1)} (dernière passe) mm/min.`:'Désactivée : F est envoyé tel quel au centre de la fraise.';
+ isValid=true;$('btn-download').disabled=false;$('btn-download').style.opacity=1;
+ $('status-box').className='status-box status-valid';
+ $('status-box').innerHTML=`✅ Fond filet Z-${f3(P.zt)} (${P.n} tours), ${P.np} passe(s), ${climb?'en avalant':'en opposition'}${P.lh?', pas à gauche':''}${P.adj?`, jeu ${P.adj>0?'+':''}${P.adj} mm`:''}${P.g28?', G28 actif':''}${P.pe?(POST[P.post].vars&&P.eb&&P.mode=='single'?', palpeur G30 : T1 mesuré après alésage, différence T2−T1 calculée et appliquée automatiquement':', palpeur G30 : T1 re-mesuré après alésage, Z recalé sur la hauteur palpeur'):''}${P.pe?`, palpage lent sur ${f3(P.pd-5)} mm (arrêt 5 mm avant le palpeur : alarme si pas d'outil)`:''}${!P.pe&&P.g28?', sans palpeur : pause M0 pour refaire Z0':''}.`;
+ const sp=P.mode=='split'&&!P.ext;
+ $('tab-btn-single').style.display=sp?'none':'';$('tab-btn-bore').style.display=sp?'':'none';$('tab-btn-thread').style.display=sp?'':'none';
+ $('tab-btn-cal').style.display=P.pe?'':'none';let t=sp?(activeTab=='single'?'bore':activeTab):(activeTab=='cal'?'cal':'single');if(t=='cal'&&!P.pe)t=sp?'bore':'single';switchTab(t);
+ draw(P);if(al)alert('G-code recalculé !');}
+
+function switchTab(t){activeTab=t;['single','bore','thread','cal'].forEach(x=>$('tab-btn-'+x).classList.toggle('active',x==t));
+ const m={single:[gS,'Complet'],bore:[gB,'OP1_Alesage'],thread:[gT,'OP2_Filetage'],cal:[gC,'Calibration_palpeur']}[t];$('gcode-filename').innerText=fname(m[1]);$('gcode-output').value=m[0];}
+
+function draw(P){const a=$('canvasXY'),x=a.getContext('2d'),cx=140,S=Math.min(16,90/(P.D/2+P.td+1));
+ x.clearRect(0,0,280,210);
+ const C=(r,col,w)=>{x.beginPath();x.arc(cx,105,r*S,0,7);x.strokeStyle=col;x.lineWidth=w;x.stroke();};
+ C(P.D/2,'#ff9800',1.5);if(!P.ext)C(P.dB/2,'#2196f3',1.5);if(P.eb)C((P.dB-P.bd)/2,'#00bcd4',2);C(P.R1,'#4caf50',2);
+ const z=$('canvasXZ').getContext('2d'),zS=Math.min(12,160/P.zb),top=15;z.clearRect(0,0,280,210);
+ z.strokeStyle='#334155';z.strokeRect(cx-(P.ext?P.D:P.dB)/2*S,top,(P.ext?P.D:P.dB)*S,(P.ext?P.zt:P.zb)*zS);
+ const H=(R,pt,zm,col)=>{z.beginPath();z.strokeStyle=col;z.lineWidth=1.5;for(let d=0;d<=zm;d+=.1){const px=cx+R*S*Math.cos(d/pt*6.2832),py=top+d*zS;d?z.lineTo(px,py):z.moveTo(px,py);}z.stroke();};
+ if(P.eb)H((P.dB-P.bd)/2,P.st,P.zb,'#00bcd4');H(P.R1,P.p,P.zt,'#4caf50');}
+
+function copyGCode(){const t=$('gcode-output');if(!t.value)return;t.select();document.execCommand('copy');alert('Code copié !');}
+function downloadActiveGCode(){if(!isValid)return;const s={single:'Complet',bore:'OP1_Alesage',thread:'OP2_Filetage',cal:'Calibration_palpeur'}[activeTab];
+ const a=document.createElement('a');a.download=fname(s);a.href=URL.createObjectURL(new Blob([$('gcode-output').value],{type:'text/plain'}));a.click();}
+
+window.onload=()=>{
+ $('panel').innerHTML=SPEC.map(r=>r[0]=='!'?`<div class="status-box" style="background:rgba(255,152,0,.12);border:1px solid var(--accent-color);color:#ffb74d">${r[1]}</div>`:typeof r[0]=='string'?`<div class="panel-title">${r[0]}</div>`:`<div class="form-row">`+r.map(f=>f.t=='chk'?`<div class="checkbox-group"><input type="checkbox" id="${f.id}" ${f.d?'checked':''}><label for="${f.id}">${f.l}</label></div>`:`<div class="form-group"><label>${f.l}</label>`+(f.t=='sel'?`<select id="${f.id}">${f.o.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('')}</select>`:`<input type="number" id="${f.id}" value="${f.v}" step="${f.s}">`)+`</div>`).join('')+`</div>`).join('')
+ +`<div class="panel-title">6. Sécurité & Calculs</div><div id="status-box" class="status-box status-valid"></div><button class="btn" onclick="run(true)">⚡ Valider & Calculer</button>`;
+ $('preset').innerHTML='<option value="">Personnalisé</option>'+STD.map((g,i)=>`<optgroup label="${g[0]}">`+g[1].map((s,j)=>`<option value="${i}-${j}">${s[0]}</option>`).join('')+'</optgroup>').join('');
+ $('preset').value='0-3';preset();
+ $('panel').addEventListener('input',e=>{const i=e.target.id;if(i=='preset')preset();else if(['diameter','pitch','pct'].includes(i))autoBore();run();});
+ run();};
+    </script>
+</body>
+</html>
